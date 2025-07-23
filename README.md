@@ -122,7 +122,6 @@ All messages are JSON objects sent over TCP sockets:
 
 
 ## Todo
-### Potential Enhancements
 - **Graphics**: Add GUI with actual drawing canvas
 
 
