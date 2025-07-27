@@ -8,6 +8,7 @@ import threading
 import json
 import time
 from typing import Dict, List, Optional, Tuple
+from utils import send_message_frame, recv_message_frame
 
 class ScribboClient:
     def __init__(self):
@@ -67,8 +68,8 @@ class ScribboClient:
             return False
         
         try:
-            message_str = json.dumps(message)
-            self.socket.send(message_str.encode('utf-8'))
+            # message_str = json.dumps(message)
+            send_message_frame(self.socket, message)
             return True
         except Exception as e:
             print(f"Error sending message: {e}")
@@ -93,15 +94,11 @@ class ScribboClient:
         """Receive messages from server in a separate thread"""
         while self.connected and self.socket:
             try:
-                data = self.socket.recv(1024).decode('utf-8')
-                if not data:
+                message = recv_message_frame(self.socket)
+                if not message:
                     break
                 
-                try:
-                    message = json.loads(data)
-                    self.handle_server_message(message)
-                except json.JSONDecodeError:
-                    print(f"Invalid JSON received: {data}")
+                self.handle_server_message(message)
                     
             except Exception as e:
                 if self.connected:
