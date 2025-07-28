@@ -6,6 +6,7 @@ Connects to the Scribbo server and handles user interaction for the drawing game
 import socket
 import threading
 import json
+import queue
 import time
 from typing import Dict, List, Optional, Tuple
 
@@ -20,6 +21,12 @@ class ScribboClient:
         self.current_square = None
         self.drawing_data = []
         self.receive_thread = None
+
+
+        self.response_queue = queue.Queue()
+        self.pending_responses = {}
+        self.response_counter = 0
+        self.lock = threading.Lock()
         
     def connect_to_server(self, host='localhost', port=12345, player_name='Player') -> bool:
         """Connect to the Scribbo server"""
@@ -67,9 +74,19 @@ class ScribboClient:
             return False
         
         try:
+            # setting a timeout for sending
+            self.socket.settimeout(10.0)
             message_str = json.dumps(message)
             self.socket.send(message_str.encode('utf-8'))
             return True
+        except socket.timeout:
+            print("Timeout senging message to server")
+            self.disconnect()
+            return False
+        except ConnectionResetError:
+            print("Connection reset by the server")
+            self.disconnect()
+            return False
         except Exception as e:
             print(f"Error sending message: {e}")
             self.disconnect()
@@ -82,27 +99,50 @@ class ScribboClient:
         
         # Wait for response (this is a simplified approach)
         # In a real implementation, you might want a more sophisticated message correlation system
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            time.sleep(0.1)
-            # Check if we have a response (this would need to be implemented with proper message queuing)
-        
-        return None  # Simplified - in practice you'd implement proper response handling
+        #start_time = time.time()
+        #while time.time() - start_time < timeout:
+        #    time.sleep(0.1)
+        #    # Check if we have a response (this would need to be implemented with proper message queuing)
+
+        # wait for response using the queue
+        try:
+            response = self.response_queue.get(timeout = timeout)
+            return response
+        except queue.Empty:
+            print("Timeout waiting for response to message type: ", {message.get()})
+            return None        
     
     def receive_messages(self):
         """Receive messages from server in a separate thread"""
         while self.connected and self.socket:
             try:
+                # timeout for receiving
+                self.socket.settimeout(5.0)
                 data = self.socket.recv(1024).decode('utf-8')
                 if not data:
+                    print("Sever closed connection")
                     break
                 
                 try:
                     message = json.loads(data)
-                    self.handle_server_message(message)
+                    #self.handle_server_message(message)
+
+                    # check if response to a pending request
+                    msg_type = message.get("type")
+                    if msg_type in ["join_success", "join_failed", "error"]:
+                        # response to a request
+                        self.response_queue.put(message)
+                    else:
+                        # broadcast message
+                        self.handle_server_message(message)
                 except json.JSONDecodeError:
                     print(f"Invalid JSON received: {data}")
-                    
+            except socket.timeout:
+                # timeout is normal, continue listening
+                continue 
+            except ConnectionResetError:
+                print("connection reset by the server")
+                break
             except Exception as e:
                 if self.connected:
                     print(f"Error receiving message: {e}")
@@ -337,6 +377,50 @@ class ScribboClient:
             self.socket = None
         
         print("Disconnected from server")
+    
+    def main(self):
+        """Main client loop for interactive gameplay"""
+        print("\nCommands:")
+        print("  draw <row> <col> <coverage>  - Draw in square (coverage 0-100)")
+        print("  board                        - Show current board state")
+        print("  state                        - Get game state")
+        print("  quit                         - Quit the game")
+        
+        try:
+            while self.connected:
+                command = input("\n> ").strip().lower()
+                
+                if command == 'quit':
+                    break
+                elif command == 'board':
+                    self.print_board_state()
+                elif command == 'state':
+                    self.get_game_state()
+                    print(f"Game state: {self.game_state}")
+                elif command.startswith('draw '):
+                    parts = command.split()
+                    if len(parts) >= 4:
+                        try:
+                            row = int(parts[1])
+                            col = int(parts[2])
+                            coverage = float(parts[3])
+                            
+                            if self.start_drawing_in_square(row, col):
+                                print(f"Simulating drawing with {coverage}% coverage...")
+                                time.sleep(1)  # Simulate drawing time
+                                self.finish_drawing(coverage)
+                            
+                        except ValueError:
+                            print("Invalid parameters. Use: draw <row> <col> <coverage>")
+                    else:
+                        print("Usage: draw <row> <col> <coverage>")
+                else:
+                    print("Unknown command")
+        
+        except KeyboardInterrupt:
+            print("\nShutting down...")
+        finally:
+            self.disconnect()
 
 def main():
     """Main function for command line client interface"""
