@@ -90,19 +90,28 @@ class ScribboServer:
     def process_message(self, client_socket: socket.socket, message: dict) -> Optional[dict]:
         """Process incoming message from client and return response"""
         msg_type = message.get('type')
+        request_id = message.get('request_id')  # Get request ID for correlation
+        
+        response = None
         
         if msg_type == 'join':
-            return self.handle_join(client_socket, message)
+            response = self.handle_join(client_socket, message)
         elif msg_type == 'start_drawing':
-            return self.handle_start_drawing(client_socket, message)
+            response = self.handle_start_drawing(client_socket, message)
         elif msg_type == 'drawing_data':
-            return self.handle_drawing_data(client_socket, message)
+            response = self.handle_drawing_data(client_socket, message)
         elif msg_type == 'finish_drawing':
-            return self.handle_finish_drawing(client_socket, message)
+            response = self.handle_finish_drawing(client_socket, message)
         elif msg_type == 'get_game_state':
-            return self.handle_get_game_state(client_socket)
+            response = self.handle_get_game_state(client_socket)
         else:
-            return {'type': 'error', 'message': f'Unknown message type: {msg_type}'}
+            response = {'type': 'error', 'message': f'Unknown message type: {msg_type}'}
+        
+        # Add request_id to response for correlation
+        if response and request_id:
+            response['request_id'] = request_id
+            
+        return response
     
     def handle_join(self, client_socket: socket.socket, message: dict) -> dict:
         """Handle a player joining the game"""
