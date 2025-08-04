@@ -24,9 +24,6 @@ class ScribboClient:
 
 
         self.response_queue = queue.Queue()
-        self.pending_responses = {}
-        self.response_counter = 0
-        self.lock = threading.Lock()
         
     def connect_to_server(self, host='localhost', port=12345, player_name='Player') -> bool:
         """Connect to the Scribbo server"""
