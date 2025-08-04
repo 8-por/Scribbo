@@ -123,6 +123,9 @@ All messages are JSON objects sent over TCP sockets:
 
 ## Todo
 - **Graphics**: Add GUI with actual drawing canvas
+1. Run `python server_gui.py` 
+2. Run `python client_gui.py`. Pick a color and join game.
+
 
 
 
