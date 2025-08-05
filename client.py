@@ -78,7 +78,7 @@ class ScribboClient:
             # setting a timeout for sending
             self.socket.settimeout(10.0)
             message_str = json.dumps(message)
-            self.socket.send(message_str.encode('utf-8'))
+            self.socket.sendall(message_str.encode('utf-8'))
             return True
         except socket.timeout:
             print("Timeout senging message to server")
