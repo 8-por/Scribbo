@@ -8,6 +8,7 @@ import threading
 import json
 import time
 from typing import Dict, List, Set, Tuple, Optional
+from utils import send_message_frame, recv_message_frame
 
 class ScribboServer:
     def __init__(self, host='localhost', port=12345):
@@ -66,19 +67,16 @@ class ScribboServer:
         try:
             while True:
                 # Receive message from client
-                data = client_socket.recv(1024).decode('utf-8')
-                if not data:
+                message = recv_message_frame(client_socket)
+                if not message:
                     break
                 
                 try:
-                    message = json.loads(data)
                     response = self.process_message(client_socket, message)
                     
                     if response:
-                        client_socket.send(json.dumps(response).encode('utf-8'))
+                        send_message_frame(client_socket, response)
                         
-                except json.JSONDecodeError:
-                    print(f"Invalid JSON from {address}: {data}")
                 except Exception as e:
                     print(f"Error processing message from {address}: {e}")
                     
@@ -349,7 +347,7 @@ class ScribboServer:
         for client_socket in self.clients:
             if client_socket != exclude:
                 try:
-                    client_socket.send(message_str.encode('utf-8'))
+                    send_message_frame(client_socket, message)
                 except Exception as e:
                     print(f"Error sending message to client: {e}")
                     disconnected_clients.append(client_socket)

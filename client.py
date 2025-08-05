@@ -10,6 +10,7 @@ import queue
 import time
 import uuid
 from typing import Dict, List, Optional, Tuple
+from utils import send_message_frame, recv_message_frame
 
 class ScribboClient:
     def __init__(self):
@@ -70,28 +71,44 @@ class ScribboClient:
             return False
     
     def send_message(self, message: dict) -> bool:
-        """Send a message to the server"""
+        """Send a message to the server using proper framing"""
         if not self.connected or not self.socket:
             return False
-        
+    
         try:
-            # setting a timeout for sending
-            self.socket.settimeout(10.0)
-            message_str = json.dumps(message)
-            self.socket.sendall(message_str.encode('utf-8'))
+            # message_str = json.dumps(message)
+            send_message_frame(self.socket, message)
             return True
-        except socket.timeout:
-            print("Timeout senging message to server")
-            self.disconnect()
-            return False
-        except ConnectionResetError:
-            print("Connection reset by the server")
-            self.disconnect()
-            return False
         except Exception as e:
             print(f"Error sending message: {e}")
             self.disconnect()
             return False
+
+    #def send_message(self, message: dict) -> bool:
+    #    """Send a message to the server"""
+    #    if not self.connected or not self.socket:
+    #        return False
+    #    
+    #    try:
+    #        # setting a timeout for sending
+    #        self.socket.settimeout(10.0)
+    #        message_str = json.dumps(message)
+    #        self.socket.sendall(message_str.encode('utf-8'))
+    #        return True
+    #    except socket.timeout:
+    #        print("Timeout senging message to server")
+    #        self.disconnect()
+    #        return False
+    #    except ConnectionResetError:
+    #        print("Connection reset by the server")
+    #        self.disconnect()
+    #        return False
+    #    except Exception as e:
+    #        print(f"Error sending message: {e}")
+    #        self.disconnect()
+    #        return False
+        
+    
     
     def send_message_and_wait_response(self, message: dict, timeout=5.0) -> Optional[dict]:
         """Send a message and wait for a response with proper request ID correlation"""
@@ -154,49 +171,21 @@ class ScribboClient:
         """Receive messages from server in a separate thread"""
         while self.connected and self.socket:
             try:
-                # timeout for receiving
-                self.socket.settimeout(5.0)
-                data = self.socket.recv(1024).decode('utf-8')
-                if not data:
-                    print("Sever closed connection")
+                message = recv_message_frame(self.socket)
+                if not message:
                     break
                 
-                try:
-                    message = json.loads(data)
-                    self.handle_incoming_message(message)
-                except json.JSONDecodeError:
-                    print(f"Invalid JSON received: {data}")
-            except socket.timeout:
-                # timeout is normal, continue listening
-                continue 
-            except ConnectionResetError:
-                print("connection reset by the server")
-                break
+                self.handle_server_message(message)
+                    
             except Exception as e:
                 if self.connected:
                     print(f"Error receiving message: {e}")
                 break
-        
+
         self.disconnect()
     
-    def handle_incoming_message(self, message: dict):
-        """Handle incoming message with proper request ID correlation"""
-        msg_type = message.get('type')
-        request_id = message.get('request_id')
-        
-        with self.lock:
-            # Check if this is a response to a pending request
-            if request_id and request_id in self.pending_requests:
-                # This is a response to a specific request
-                del self.pending_requests[request_id]
-                self.response_queue.put(message)
-                return
-            
-            # This is a broadcast message or unsolicited response
-            self.handle_broadcast_message(message)
-    
-    def handle_broadcast_message(self, message: dict):
-        """Handle broadcast messages (player_joined, player_left, etc.)"""
+    def handle_server_message(self, message: dict):
+        """Handle incoming message from server"""
         msg_type = message.get('type')
         
         if msg_type == 'player_joined':
