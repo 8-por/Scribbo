@@ -20,14 +20,27 @@ def winner_message(players):
     max_squares_captured = 0
     winner_color_key = None
 
-    for color_key, player in player.items():
+    for color_key, player in players.items():
         if player.taken_squares > max_squares_captured:
             max_squares_captured = player.taken_squares
             winner_color_key = color_key
     
+    if winner_color_key is not None:
+        winner_color = players[winner_color_key].color
+        if winner_color == (255, 0, 0):
+            winner_text = f"The winner is Player Red."
+        elif winner_color == (0,255, 0):
+            winner_text = f"The winner is Player Green"
+        elif winner_color == (0, 0, 255):
+            winner_text = f"The winner is Player Blue"
+        elif winner_color == (255, 255, 0):
+            winner_text = f"The winner is Player Yellow"
+        else:
+            winner_text = "Its a tie!"
+    
     return {
         'type': 'winner',
-        'winner_color_key': winner_color_key
+        'winner_text': winner_text
     }
 
 
@@ -91,8 +104,9 @@ def handle_broadcast():
         
         if board.is_game_over():
             for client in players.keys():
-                winner_message = winner_message(players)
-                broadcast_message(client, winner_message)
+                winner_msg = winner_message(players)
+                print(winner_msg)
+                broadcast_message(client, winner_msg)
             break
 
     for client in players.keys():
@@ -146,7 +160,7 @@ def main():
     for thread in threads:
         thread.join()
     # Join broadcasting thread
-    # client_broadcaster.join()
+    client_broadcasting.join()
     # Close socket
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     server_socket.close()

@@ -68,10 +68,10 @@ class MessageProtocol:
     MAX_MESSAGE_SIZE = 4096
     
     # Game constants
-    BOARD_SIZE = 8
+    BOARD_SIZE = 2
     SQUARE_SIZE = 100
     MIN_COVERAGE_PERCENTAGE = 20.0
-    MAX_PLAYERS = 4
+    MAX_PLAYERS = 2
     
     # Available colors for players
     PLAYER_COLORS = [
@@ -310,8 +310,8 @@ class MessageProtocol:
         }
 
     @staticmethod
-    def create_winner_message(winner_color_key: str) -> Dict:
+    def create_winner_message(winner_text: str) -> Dict:
         return {
             'type': MessageType.WINNER.value,
-            'winner_color_key': winner_color_key
+            'winner_text': winner_text
         }

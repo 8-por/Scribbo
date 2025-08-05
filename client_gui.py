@@ -26,10 +26,10 @@ def receive_messages(board, client_socket):
 
             # if msg_type == 'winner_color_key'
             if msg_type == 'winner':
-                winner_color_key = message.get('winner_color_key')
-                print(f"Game over, winner is {winner_color_key}")
+                winner_text = message.get('winner_text')
+                print(f"Game over, winner message received: {winner_text}")
                 global winner_key
-                winner_key = f"Game over! The winner is Player {winner_color_key}"
+                winner_key = winner_text
                 end_of_game = True  
 
             elif msg_type == 'square_lock_on':
@@ -46,13 +46,15 @@ def receive_messages(board, client_socket):
         except Exception as e:
             continue
     
+    # To fix
+    # In a multiplayer situation, if another player completes the board winner message will not be received
     while True:
         try:
             data = client_socket.recv(BUFFER_SIZE).decode('utf-8')
             if data is not None:
                 msg = json.loads(data)
-                board_update = msg.get('board_state')
-                board.message_to_board(board_update)
+                final_board_update = msg.get('board_state')
+                board.message_to_board(final_board_update)
                 break
         except BlockingIOError:
             pass
@@ -84,7 +86,7 @@ def main():
     pygame.init()
     game_over = False
 
-    square_size = MessageProtocol.SQUARE_SIZE / 2
+    square_size = MessageProtocol.SQUARE_SIZE 
     board_size = MessageProtocol.BOARD_SIZE
     screen_size = (board_size * square_size, board_size * square_size)
     screen = pygame.display.set_mode(screen_size)
@@ -163,16 +165,23 @@ def main():
 
         if board.is_game_over():
             game_over = True
-
+    
+    screen.fill((255, 255, 255))
+    board.draw_squares(screen)
+    pygame.display.flip()
+    time.sleep(3)
     pygame.quit()
+    
 
     # display game over
     pygame.init()
+    screen_size = (1000, 600)
+    screen = pygame.display.set_mode(screen_size)
     pygame.display.set_caption("Game over")
     font = pygame.font.SysFont('Consolas', 20)
     screen.fill((255, 255, 255))
     text = font.render(winner_key, True, (0, 0, 0))
-    text_rect = text.get_rect(center=(200, 200))
+    text_rect = text.get_rect(center=(500, 300))
     screen.blit(text, text_rect)
     pygame.display.flip()
     time.sleep(10)
