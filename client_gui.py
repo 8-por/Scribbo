@@ -46,8 +46,7 @@ def receive_messages(board, client_socket):
         except Exception as e:
             continue
     
-    # To fix
-    # In a multiplayer situation, if another player completes the board winner message will not be received
+    
     while True:
         try:
             data = client_socket.recv(BUFFER_SIZE).decode('utf-8')
@@ -172,7 +171,7 @@ def main():
     time.sleep(3)
     pygame.quit()
     
-
+    
     # display game over
     pygame.init()
     screen_size = (1000, 600)
@@ -184,7 +183,7 @@ def main():
     text_rect = text.get_rect(center=(500, 300))
     screen.blit(text, text_rect)
     pygame.display.flip()
-    time.sleep(10)
+    time.sleep(7)
     pygame.quit()
 
 

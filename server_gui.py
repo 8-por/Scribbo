@@ -92,9 +92,11 @@ def handle_client(client_socket, client_address):
                 print("GAME OVER")
                 break
             
-        except Exception as e:
-            print(f"Error handling client {client_address}: {e}")
+        except Exception as _:
             return
+        
+    print("returning from handle_client")
+    return
 
 def handle_broadcast():
     while True:
