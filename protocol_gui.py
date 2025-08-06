@@ -68,15 +68,14 @@ class MessageProtocol:
     MAX_MESSAGE_SIZE = 4096
     
     # Game constants
-    BOARD_SIZE = 2
-    SQUARE_SIZE = 100
-    MIN_COVERAGE_PERCENTAGE = 20.0
-    MAX_PLAYERS = 2
+    BOARD_SIZE = 8
+    SQUARE_SIZE = 50
+    MIN_COVERAGE_PERCENTAGE = 0.2 # [0, 1]
+    MAX_PLAYERS = 4
     
     # Available colors for players
     PLAYER_COLORS = [
-        'red', 'blue', 'green', 'yellow', 
-        'purple', 'orange', 'pink', 'cyan'
+        'red', 'blue', 'green', 'yellow'
     ]
     
     @staticmethod

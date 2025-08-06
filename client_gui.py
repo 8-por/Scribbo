@@ -5,7 +5,6 @@ import socket
 import json
 import time
 import sys
-import copy
 import threading
 import pygame
 from gameboard import GameBoard
@@ -68,7 +67,7 @@ def receive_messages(board, client_socket):
 
 
 BUFFER_SIZE = 2048
-winner_key = ""
+winner_key = "Thanks for playing!"
 board = GameBoard()
 
 def main():
@@ -85,9 +84,10 @@ def main():
     pygame.init()
     game_over = False
 
-    square_size = MessageProtocol.SQUARE_SIZE 
-    board_size = MessageProtocol.BOARD_SIZE
-    screen_size = (board_size * square_size, board_size * square_size)
+    # square_size = MessageProtocol.SQUARE_SIZE
+    # board_size = MessageProtocol.BOARD_SIZE
+    # screen_size = (board_size * square_size, board_size * square_size)
+    screen_size = (400, 400)
     screen = pygame.display.set_mode(screen_size)
     pygame.display.set_caption("Scribbo Game")    
 

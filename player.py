@@ -33,10 +33,13 @@ class Player:
         if self.current_square:
             self.current_square.lock.release()
 
-            # Coverage calculation
+            # Coverage calculation. range [0,1]
             colored_pixels = sum(1 for pixel in self.current_square.image.getdata() if pixel == self.color)
             total_pixels = self.square_size * self.square_size
-            coverage = (colored_pixels / total_pixels) * 100.0
+            coverage = (colored_pixels / total_pixels) 
+            
+            print("Colored: ", colored_pixels)
+            print("Total: ", total_pixels)
             print("Coverage: ", coverage)
 
             if coverage >= MessageProtocol.MIN_COVERAGE_PERCENTAGE:
@@ -62,7 +65,7 @@ class Player:
 
 
 
-
+# screen_size = (400, 400)
 def color_selection(screen):
     player_colors = set(COLORS.keys())
     font = pygame.font.Font(None, 36)

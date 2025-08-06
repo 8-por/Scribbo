@@ -8,10 +8,10 @@ import pygame
 
 class GameBoard:
     def __init__(self):
-        self.square_size = MessageProtocol.SQUARE_SIZE
+        self.square_size = MessageProtocol.SQUARE_SIZE 
         self.board_size = MessageProtocol.BOARD_SIZE
-        self.COLS = 2
-        self.ROWS = 2
+        self.COLS = 8
+        self.ROWS = 8
         
         # 2D array of squares
         self.squares = [[Square((x*self.square_size, y*self.square_size)) for x in range(self.COLS)] for y in range(self.ROWS)]
@@ -23,7 +23,7 @@ class GameBoard:
                 rect = pygame.Rect(x*self.square_size, y*self.square_size, self.square_size, self.square_size)
                 pygame.draw.rect(screen, (0,0,0), rect, 1) # Draw square outline
 
-                square_rect = rect.inflate(-8, -8)
+                square_rect = rect.inflate(-4, -4)
                 pygame.draw.rect(screen, square.color if square.is_taken else (255, 255, 255), square_rect)
     
     def is_game_over(self):
