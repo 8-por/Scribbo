@@ -6,7 +6,9 @@ Connects to the Scribbo server and handles user interaction for the drawing game
 import socket
 import threading
 import json
+import queue
 import time
+import uuid
 from typing import Dict, List, Optional, Tuple
 from utils import send_message_frame, recv_message_frame
 
@@ -21,6 +23,12 @@ class ScribboClient:
         self.current_square = None
         self.drawing_data = []
         self.receive_thread = None
+
+        # Message handling
+        self.response_queue = queue.Queue()
+        self.pending_requests = {}  # request_id -> (message, timestamp)
+        self.lock = threading.Lock()
+        self.request_timeout = 10.0  # seconds
         
     def connect_to_server(self, host='localhost', port=12345, player_name='Player') -> bool:
         """Connect to the Scribbo server"""
@@ -63,52 +71,126 @@ class ScribboClient:
             return False
     
     def send_message(self, message: dict) -> bool:
-        """Send a message to the server"""
+        """Send a message to the server using proper framing"""
         if not self.connected or not self.socket:
             return False
-        
+    
         try:
-            # message_str = json.dumps(message)
-            send_message_frame(self.socket, message)
+            # Set timeout for sending
+            self.socket.settimeout(10.0)
+            send_message_frame(self.socket, message)  # ✅ Use the framed version
             return True
+        except socket.timeout:
+            print("Timeout sending message to server")
+            self.disconnect()
+            return False
+        except ConnectionResetError:
+            print("Connection reset by the server")
+            self.disconnect()
+            return False
         except Exception as e:
             print(f"Error sending message: {e}")
             self.disconnect()
             return False
+
     
     def send_message_and_wait_response(self, message: dict, timeout=5.0) -> Optional[dict]:
-        """Send a message and wait for a response (blocking)"""
-        if not self.send_message(message):
+        """Send a message and wait for a response with proper request ID correlation"""
+        if not self.connected:
             return None
         
-        # Wait for response (this is a simplified approach)
-        # In a real implementation, you might want a more sophisticated message correlation system
+        # Generate unique request ID for correlation
+        request_id = str(uuid.uuid4())
+        message['request_id'] = request_id
+        
+        # Track this request
+        with self.lock:
+            self.pending_requests[request_id] = (message, time.time())
+        
+        # Send the message
+        if not self.send_message(message):
+            with self.lock:
+                if request_id in self.pending_requests:
+                    del self.pending_requests[request_id]
+            return None
+        
+        # Wait for response
+        if timeout is None:
+            timeout = self.request_timeout
+            
         start_time = time.time()
         while time.time() - start_time < timeout:
-            time.sleep(0.1)
-            # Check if we have a response (this would need to be implemented with proper message queuing)
+            with self.lock:
+                # Check if we have a response for this request
+                if request_id not in self.pending_requests:
+                    # Request was completed
+                    break
+                
+                # Clean up old pending requests
+                current_time = time.time()
+                expired_requests = [
+                    req_id for req_id, (_, timestamp) in self.pending_requests.items()
+                    if current_time - timestamp > self.request_timeout
+                ]
+                for req_id in expired_requests:
+                    del self.pending_requests[req_id]
+            
+            time.sleep(0.1)  # Small delay to prevent busy waiting
         
-        return None  # Simplified - in practice you'd implement proper response handling
+        # Check if request timed out
+        with self.lock:
+            if request_id in self.pending_requests:
+                del self.pending_requests[request_id]
+                print(f"Timeout waiting for response to message type: {message.get('type', 'unknown')}")
+                return None
+        
+        # Response was received and handled - get it from the queue
+        try:
+            response = self.response_queue.get_nowait()
+            return response
+        except queue.Empty:
+            return {'type': 'success', 'request_id': request_id}
     
     def receive_messages(self):
         """Receive messages from server in a separate thread"""
         while self.connected and self.socket:
             try:
+                self.socket.settimeout(5.0)
                 message = recv_message_frame(self.socket)
                 if not message:
+                    print("Server closed connection")
                     break
-                
-                self.handle_server_message(message)
-                    
+                self.handle_incoming_message(message)
+            except socket.timeout:
+                continue
+            except ConnectionResetError:
+                print("Connection reset by the server")
+                break
             except Exception as e:
                 if self.connected:
                     print(f"Error receiving message: {e}")
                 break
-        
+
         self.disconnect()
     
-    def handle_server_message(self, message: dict):
-        """Handle incoming message from server"""
+    def handle_incoming_message(self, message: dict):
+        """Handle incoming message with proper request ID correlation"""
+        msg_type = message.get('type')
+        request_id = message.get('request_id')
+        
+        with self.lock:
+            # Check if this is a response to a pending request
+            if request_id and request_id in self.pending_requests:
+                # This is a response to a specific request
+                del self.pending_requests[request_id]
+                self.response_queue.put(message)
+                return
+            
+            # This is a broadcast message or unsolicited response
+            self.handle_broadcast_message(message)
+    
+    def handle_broadcast_message(self, message: dict):
+        """Handle broadcast messages (player_joined, player_left, etc.)"""
         msg_type = message.get('type')
         
         if msg_type == 'player_joined':
@@ -128,7 +210,7 @@ class ScribboClient:
         elif msg_type == 'error':
             print(f"Server error: {message.get('message', 'Unknown error')}")
         else:
-            print(f"Unknown message type: {msg_type}")
+            print(f"Unknown broadcast message type: {msg_type}")
     
     def handle_player_joined(self, message: dict):
         """Handle notification that a player joined"""
@@ -216,14 +298,17 @@ class ScribboClient:
             'col': col
         }
         
-        if self.send_message(message):
+        response = self.send_message_and_wait_response(message)
+        if response and response.get('type') == 'start_drawing_success':
             self.drawing_active = True
             self.current_square = (row, col)
             self.drawing_data = []
             print(f"Started drawing in square ({row}, {col})")
             return True
-        
-        return False
+        else:
+            error_msg = response.get('message', 'Unknown error') if response else 'No response'
+            print(f"Failed to start drawing: {error_msg}")
+            return False
     
     def add_drawing_point(self, x: float, y: float):
         """Add a drawing point (relative coordinates within the square)"""
@@ -253,6 +338,7 @@ class ScribboClient:
             'data': self.drawing_data[-5:]  # Send last 5 points
         }
         
+        # This is a fire-and-forget message, no response needed
         self.send_message(message)
     
     def finish_drawing(self, coverage_percentage: float = 0.0) -> bool:
@@ -262,11 +348,6 @@ class ScribboClient:
             return False
         
         row, col = self.current_square
-        
-        # Send final drawing data
-        self.send_drawing_update()
-        
-        # Send finish message
         message = {
             'type': 'finish_drawing',
             'row': row,
@@ -274,20 +355,37 @@ class ScribboClient:
             'coverage': coverage_percentage
         }
         
-        if self.send_message(message):
+        response = self.send_message_and_wait_response(message)
+        if response and response.get('type') in ['square_captured', 'square_failed']:
             self.drawing_active = False
             self.current_square = None
             self.drawing_data = []
-            print(f"Finished drawing in square ({row}, {col}) with {coverage_percentage:.1f}% coverage")
+            
+            if response.get('type') == 'square_captured':
+                print(f"Successfully captured square ({row}, {col}) with {coverage_percentage:.1f}% coverage")
+            else:
+                print(f"Failed to capture square ({row}, {col}) with {coverage_percentage:.1f}% coverage")
+            
             return True
-        
-        return False
+        else:
+            error_msg = response.get('message', 'Unknown error') if response else 'No response'
+            print(f"Failed to finish drawing: {error_msg}")
+            return False
     
     def get_game_state(self) -> Optional[dict]:
-        """Request current game state from server"""
-        message = {'type': 'get_game_state'}
-        self.send_message(message)
-        return self.game_state
+        """Get current game state from server"""
+        message = {
+            'type': 'get_game_state'
+        }
+        
+        response = self.send_message_and_wait_response(message)
+        if response and response.get('type') == 'game_state':
+            self.game_state = response.get('state', {})
+            return self.game_state
+        else:
+            error_msg = response.get('message', 'Unknown error') if response else 'No response'
+            print(f"Failed to get game state: {error_msg}")
+            return None
     
     def print_board_state(self):
         """Print current board state to console"""
@@ -334,6 +432,50 @@ class ScribboClient:
             self.socket = None
         
         print("Disconnected from server")
+    
+    def main(self):
+        """Main client loop for interactive gameplay"""
+        print("\nCommands:")
+        print("  draw <row> <col> <coverage>  - Draw in square (coverage 0-100)")
+        print("  board                        - Show current board state")
+        print("  state                        - Get game state")
+        print("  quit                         - Quit the game")
+        
+        try:
+            while self.connected:
+                command = input("\n> ").strip().lower()
+                
+                if command == 'quit':
+                    break
+                elif command == 'board':
+                    self.print_board_state()
+                elif command == 'state':
+                    self.get_game_state()
+                    print(f"Game state: {self.game_state}")
+                elif command.startswith('draw '):
+                    parts = command.split()
+                    if len(parts) >= 4:
+                        try:
+                            row = int(parts[1])
+                            col = int(parts[2])
+                            coverage = float(parts[3])
+                            
+                            if self.start_drawing_in_square(row, col):
+                                print(f"Simulating drawing with {coverage}% coverage...")
+                                time.sleep(1)  # Simulate drawing time
+                                self.finish_drawing(coverage)
+                            
+                        except ValueError:
+                            print("Invalid parameters. Use: draw <row> <col> <coverage>")
+                    else:
+                        print("Usage: draw <row> <col> <coverage>")
+                else:
+                    print("Unknown command")
+        
+        except KeyboardInterrupt:
+            print("\nShutting down...")
+        finally:
+            self.disconnect()
 
 def main():
     """Main function for command line client interface"""
