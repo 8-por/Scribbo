@@ -14,7 +14,6 @@ Scribbo is a competitive drawing game where players compete to capture squares o
 - **Winning**: Player with the most squares when the board is full wins
 - **Blocking**: While a player is drawing in a square, other players cannot draw in it
 
-## Running the Game
 
 
 
