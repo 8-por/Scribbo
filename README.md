@@ -26,7 +26,7 @@ Scribbo is a competitive drawing game where players compete to capture squares o
 
 ### Joining the Game
 1. Edit server host/port at main on client_gui.py
-2. python ./client_gui.py
+2. type ```python ./client_gui.py``` into terminal
 
 
 
