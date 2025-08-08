@@ -32,8 +32,8 @@ Scribbo is a competitive drawing game where players compete to capture squares o
 
 
 ### Example Gameplay
-```
-<img width="1199" height="678" alt="image" src="https://github.com/user-attachments/assets/a50777dc-ee64-417a-a3b3-98b9aaa13838" />
+<img width="1199" height="678" alt="image" src="https://github.com/user-attachments/assets/a50777dc-ee64-417a-a3b3-98b9aaa13838" />```
+
 
 
 
