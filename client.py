@@ -30,6 +30,12 @@ class ScribboClient:
         self.lock = threading.Lock()
         self.request_timeout = 10.0  # seconds
         
+        # Action queue for main thread tasks
+        self.action_queue = queue.Queue()
+        # Board update thread
+        self.board_update_thread = None
+        self.board_update_thread_stop = threading.Event()
+    
     def connect_to_server(self, host='localhost', port=12345, player_name='Player') -> bool:
         """Connect to the Scribbo server"""
         try:
@@ -43,6 +49,12 @@ class ScribboClient:
             self.receive_thread = threading.Thread(target=self.receive_messages)
             self.receive_thread.daemon = True
             self.receive_thread.start()
+
+            # Start board update thread
+            self.board_update_thread_stop.clear()
+            self.board_update_thread = threading.Thread(target=self.board_update_loop)
+            self.board_update_thread.daemon = True
+            self.board_update_thread.start()
             
             # Send join request
             join_message = {
@@ -236,7 +248,7 @@ class ScribboClient:
         row = message.get('row')
         col = message.get('col')
         player_id = message.get('player_id')
-        
+
         print(f"Square ({row}, {col}) is now being drawn on by Player {player_id}")
     
     def handle_drawing_update(self, message: dict):
@@ -248,6 +260,10 @@ class ScribboClient:
         
         # In a full implementation, this would update the visual representation
         print(f"Drawing update in square ({row}, {col}) by Player {player_id}")
+        # updating the visual representation of the drawing
+        self.get_game_state["board"][row][col] = player_id
+        print("drawing state: ", self.game_state["board"][row][col])
+
     
     def handle_square_captured(self, message: dict):
         """Handle notification that a square was captured"""
@@ -258,6 +274,9 @@ class ScribboClient:
         game_over = message.get('game_over', False)
         
         print(f"Square ({row}, {col}) captured by Player {player_id} with {coverage:.1f}% coverage")
+        
+        # signal the background thread to update the game state
+        self.action_queue.put('fetch_game_state')
         
         if game_over:
             winner_id = message.get('winner_id')
@@ -324,7 +343,7 @@ class ScribboClient:
             self.send_drawing_update()
         
         return True
-    
+
     def send_drawing_update(self):
         """Send current drawing data to server"""
         if not self.drawing_active or not self.current_square:
@@ -340,7 +359,6 @@ class ScribboClient:
         
         # This is a fire-and-forget message, no response needed
         self.send_message(message)
-    
     def finish_drawing(self, coverage_percentage: float = 0.0) -> bool:
         """Finish drawing in the current square"""
         if not self.drawing_active or not self.current_square:
@@ -395,7 +413,8 @@ class ScribboClient:
         
         board = self.game_state['board']
         players = self.game_state.get('players', {})
-        
+
+        print("printing board state")        
         print("\n=== BOARD STATE ===")
         print("   0 1 2 3 4 5 6 7")
         
@@ -420,17 +439,29 @@ class ScribboClient:
                 row, col = map(int, square_key.split(','))
                 print(f"Square ({row}, {col}) being drawn on by Player {player_id}")
     
+    def board_update_loop(self):
+        """Background thread to process board update actions and print the board in real time."""
+        while not self.board_update_thread_stop.is_set():
+            try:
+                action = self.action_queue.get(timeout=0.2)
+                if action == 'fetch_game_state':
+                    self.get_game_state()
+                    #self.print_board_state()
+            except queue.Empty:
+                continue
+    
     def disconnect(self):
         """Disconnect from server"""
         self.connected = False
-        
+        # Stop board update thread
+        if self.board_update_thread_stop:
+            self.board_update_thread_stop.set()
         if self.socket:
             try:
                 self.socket.close()
             except:
                 pass
             self.socket = None
-        
         print("Disconnected from server")
     
     def main(self):
@@ -443,6 +474,16 @@ class ScribboClient:
         
         try:
             while self.connected:
+                ## Check for actions from the action queue
+                #try:
+                #    while True:
+                #        action = self.action_queue.get_nowait()
+                #        if action == 'fetch_game_state':
+                #            print("updating state")
+                #            self.get_game_state()
+                #except queue.Empty:
+                #    pass
+                
                 command = input("\n> ").strip().lower()
                 
                 if command == 'quit':
@@ -464,6 +505,7 @@ class ScribboClient:
                                 print(f"Simulating drawing with {coverage}% coverage...")
                                 time.sleep(1)  # Simulate drawing time
                                 self.finish_drawing(coverage)
+                                #self.get_game_state()
                             
                         except ValueError:
                             print("Invalid parameters. Use: draw <row> <col> <coverage>")
