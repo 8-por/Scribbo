@@ -71,7 +71,7 @@ class MessageProtocol:
     BOARD_SIZE = 8
     SQUARE_SIZE = 50
     MIN_COVERAGE_PERCENTAGE = 0.5 # [0, 1]
-    MAX_PLAYERS = 3
+    MAX_PLAYERS = 4
     
     # Available colors for players
     PLAYER_COLORS = [

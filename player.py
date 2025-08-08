@@ -50,7 +50,7 @@ class Player:
         if self.current_square and square and square.coordinates == self.current_square.coordinates:
             self.current_square.draw(self, x, y)
     
-    def stop_drawing_server_coloured(self):
+    def stop_drawing_server_marked(self):
         if self.current_square:
             self.current_square.lock.release()
             self.current_square.is_taken = True
