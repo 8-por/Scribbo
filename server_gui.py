@@ -1,7 +1,5 @@
 """
-Pick color
-Display 8 X 8 grid
-Add drawing mechanism - start_drawing, stop_drawing, finish_drawing, coverage_calculation
+Scribbo Game Server with GUI
 """
 import socket
 import threading
@@ -9,8 +7,9 @@ import time
 import json
 from player import Player
 from gameboard import GameBoard
+from protocol_gui import MessageProtocol
 
-# later change function name to send_message to avoid confusion
+
 def broadcast_message(client, message: dict):
     message_str = json.dumps(message)
     client.send(message_str.encode('utf-8'))
@@ -132,7 +131,7 @@ def main():
     SERVER_IP = 'localhost'
     SERVER_PORT = 12345
     ADDR = (SERVER_IP, SERVER_PORT)
-    MAX_PLAYERS = 3 
+    MAX_PLAYERS = MessageProtocol.MAX_PLAYERS
 
     server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     server_socket.bind(ADDR)
@@ -147,7 +146,7 @@ def main():
     # Store client threads in a list
     threads = []
     num_players = 0
-    # only accepts MAX_PLAYERS number of players (no less either)
+    
     while num_players < MAX_PLAYERS:
         client_socket, client_addr = server_socket.accept()
         client_handler = threading.Thread(target=handle_client, args=(client_socket, client_addr))
@@ -155,13 +154,13 @@ def main():
         threads.append(client_handler)
         num_players += 1
 
-    # in game loop
+    # Game loop
     while not board.is_game_over():
         time.sleep(1)
-    # After game is over join the client threads 
+    
     for thread in threads:
         thread.join()
-    # Join broadcasting thread
+    
     client_broadcasting.join()
     # Close socket
     server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)

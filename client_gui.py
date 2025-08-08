@@ -1,5 +1,5 @@
 """
-Add drawing mechanism on client side
+Scribbo Game Client with GUI
 """
 import socket
 import json
@@ -62,10 +62,6 @@ def receive_messages(board, client_socket):
 
 
 
-
-
-
-
 BUFFER_SIZE = 2048
 winner_key = "Thanks for playing!"
 board = GameBoard()
@@ -75,7 +71,7 @@ def main():
     SERVER_IP = '127.0.0.1'  # localhost
     SERVER_PORT = 12345
     ADDR = (SERVER_IP, SERVER_PORT)
-    # Create a TCP socket
+    # Opening a TCP socket
     client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     client_socket.connect(ADDR)
     print(f"Connected to server at {ADDR}")
@@ -84,9 +80,7 @@ def main():
     pygame.init()
     game_over = False
 
-    # square_size = MessageProtocol.SQUARE_SIZE
-    # board_size = MessageProtocol.BOARD_SIZE
-    # screen_size = (board_size * square_size, board_size * square_size)
+    
     screen_size = (400, 400)
     screen = pygame.display.set_mode(screen_size)
     pygame.display.set_caption("Scribbo Game")    

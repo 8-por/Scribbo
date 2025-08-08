@@ -1,6 +1,6 @@
 """
 Graphical game board for the Scribbo game.
-Handles the drawing and interaction with squares on the game board
+Implements drawing and provides interaction with squares on the game board
 """
 from protocol_gui import MessageProtocol
 from square import Square

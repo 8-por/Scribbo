@@ -68,8 +68,7 @@ class Player:
 # screen_size = (400, 400)
 def color_selection(screen):
     player_colors = set(COLORS.keys())
-    font = pygame.font.Font(None, 36)
-    color_rects = {}  # Initialize color_rects dictionary to store color rectangles
+    color_rects = {}  
     while True:
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
@@ -79,7 +78,7 @@ def color_selection(screen):
             if event.type == pygame.MOUSEBUTTONDOWN:
                 for color, rect in color_rects.items():
                     if rect.collidepoint(event.pos) and color in player_colors:
-                        print("color picked: ", color)
+                        print("Color picked: ", color)
                         player_colors.remove(color)
                         return color
 
@@ -91,8 +90,8 @@ def color_selection(screen):
         pygame.display.flip()
 
 COLORS = {
-    'R': (255, 0, 0),  # Red
-    'G': (0, 255, 0),  # Green
-    'B': (0, 0, 255),  # Blue
+    'R': (255, 0, 0),   # Red
+    'G': (0, 255, 0),   # Green
+    'B': (0, 0, 255),   # Blue
     'Y': (255, 255, 0)  # Yellow
 }

@@ -1,6 +1,5 @@
 """
-Reprsents individual squares in the board.
-Previously (row, col) in game logic, now (x, y) = pygame.mouse.get_pos()
+Reprsents individual squares (shared object) in the board.
 
 """
 from PIL import Image
@@ -39,12 +38,7 @@ class Square:
         self.lock = threading.Lock()
         self.image = Image.new('RGB', (self.square_size, self.square_size))
 
-    def clone(self, cloned_square):
-        """Create a deep copy of the square."""
-        self.is_taken = cloned_square.is_taken
-        self.owner = cloned_square.owner
-        self.color = cloned_square.color
-
+   
     def draw(self, player, x, y):
         """Draw on the square at the given coordinates."""
         draw = ImageDraw.Draw(self.image)
