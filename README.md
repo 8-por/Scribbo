@@ -16,11 +16,35 @@ Scribbo is a competitive drawing game where players compete to capture squares o
 
 
 
-
+## Dependencies
+To install dependencies run the command:
+```
+pip install -r requirements.txt
+```
 ## How to Play
 
-### Server Setup
-1. One player starts the server using `python server.py`
+### Server Setup 2 methods
+### method 1 Port forwarding
+1. Make your server listen on all interfaces set the host to 0.0.0.0
+2. Setup port forwarding 
+3. Find your public IP address
+4. give your friends the public ip address and port number you are using to host your server
+### method 2 ngrok
+1. Install [ngrok](https://ngrok.com/downloads/windows)
+2. run the server program and run the command ngrok tcp <port_number>
+3. You will get an output like 
+```
+.
+.
+.
+Forwarding                    tcp://4.tcp.us-cal-1.ngrok.io:16919 -> localhost:12345 
+.
+.
+```
+4. Give the host: 4.tcp.us-cal-1.ngrok.io, and port number: 16919 to the clients
+
+### Running the server
+1. One player starts the server using ```python server_gui.py```
 2. Server displays its IP and port for other players to connect
 3. Server automatically starts the game when first player joins
 
