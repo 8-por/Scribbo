@@ -120,6 +120,7 @@ All messages are JSON objects sent over TCP sockets:
 - `square_captured`/`square_failed`: Drawing completion results
 - `drawing_update`: Real-time drawing from other players
 
+### How to run the server 2 methods
 
 - **Graphics**: Add GUI with actual drawing canvas
 1. Run `python server_gui.py` 
